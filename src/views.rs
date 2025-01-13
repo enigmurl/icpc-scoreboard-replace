@@ -140,7 +140,7 @@ fn scoreboard(sb: &Scoreboard) -> impl IVP {
     thread::spawn(move || {
         let start = SystemTime::now();
         loop {
-            thread::sleep(Duration::from_secs(1));
+            thread::sleep(Duration::from_secs(60));
             let Some(binding) = binding.upgrade() else {
                 break;
             };
