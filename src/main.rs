@@ -35,7 +35,7 @@ impl WindowProvider for MainWindow {
             // min
             Size::new(400.0, 400.0),
             // intrinsic
-            Size::new(800.0, 800.0),
+            Size::new(1000.0, 800.0),
             // max
             Size::new(2400.0, 2000.0)
         )
@@ -85,7 +85,8 @@ pub(crate) trait IVP: IntoViewProvider<Env, DownContext=(), UpContext=()> { }
 impl<I> IVP for I where I: IntoViewProvider<Env, DownContext=(), UpContext=()> { }
 
 
-fn main() {
+#[tokio::main]
+async fn main() {
     quarve::core::launch(App);
 }
 

@@ -5,6 +5,7 @@ use quarve::core::slock_owner;
 use quarve::prelude::*;
 use quarve::state::{Binding, Filterless, JoinedSignal, Store, WeakBinding};
 use quarve::state::SetAction::Set;
+use quarve::view::color_view::EmptyView;
 use quarve::view::control::Dropdown;
 use quarve::view::modal::{MessageBox, MessageBoxButton};
 use quarve::view::scroll::ScrollView;
@@ -51,14 +52,14 @@ fn dummy_scoreboard() -> Scoreboard {
 }
 
 fn divider() -> impl IVP {
-    PURPLE
+    LIGHT_GRAY
         .frame(F.intrinsic(1,1).unlimited_width())
 }
 
 pub fn viewer() -> impl IVP {
     let contest_type = Store::new(None);
     let url = Store::new("".to_string());
-    let contest_data = Store::new(ScoreboardOption::Some(dummy_scoreboard()));
+    let contest_data = Store::new(ScoreboardOption::None);
     
     vstack()
         .push(
@@ -96,7 +97,7 @@ fn selector(
                 .bold()
         )
         .push(
-            TextField::new(url)
+            TextField::new(url.clone())
                 .unstyled()
                 .padding(2)
                 .layer(L.border(LIGHT_GRAY, 1).radius(2))
@@ -106,7 +107,18 @@ fn selector(
             button("Go", move |s| {
                 match contest_type.borrow(s).deref() {
                     Some(ref content) => {
-                        begin_parse(&content, contest_data.clone())
+                        let content = content.clone();
+                        let url = url.clone();
+                        let contest_data = contest_data.clone();
+                        tokio::spawn(async move {
+                            let url = {
+                                let s = slock_owner();
+                                let res = url.borrow(s.marker()).clone();
+                                res
+                            };
+
+                            begin_parse(&content, &url, contest_data).await
+                        });
                     }
                     None => {
                         MessageBox::new("Invalid".into(), "Select a contest type".into())
@@ -136,7 +148,7 @@ fn scoreboard(sb: &Scoreboard) -> impl IVP {
             let s = slock_owner();
             let duration = SystemTime::now()
                 .duration_since(start).unwrap();
-            binding.apply(Set(600 * duration.as_secs() as usize), s.marker());
+            binding.apply(Set((duration.as_secs() as usize).min(300 * 60)), s.marker());
         }
     });
 
@@ -154,7 +166,7 @@ fn scoreboard(sb: &Scoreboard) -> impl IVP {
                     }, s))
                         .padding(5)
                         .frame(F.intrinsic(90, 30).align(Alignment::Leading) )
-                        .border(WHITE, 1)
+                        .border(LIGHT_GRAY, 1)
                         .padding_edge(5, edge::DOWN | edge::LEFT)
                 )
         });
@@ -164,16 +176,16 @@ fn scoreboard(sb: &Scoreboard) -> impl IVP {
     // problem headers
     let problems = (0..sb.num_problems)
         .into_iter()
-        .hmap_options(|i, s| {
+        .hmap_options(|i, _s| {
             text(&"ABCDEFGHIJKLMNOPQRSTUVWXYZ"[*i ..*i + 1])
                 .intrinsic(22, 22)
                 .bold()
                 .padding(3)
-                .layer(L.radius(2).border(LIGHT_GRAY, 1))
+                .layer(L.radius(2).border(DARK_GRAY, 1))
                 .intrinsic(50, 30)
         }, HStackOptions::default().spacing(0.0));
 
-    let mut team_results = sb.entries;
+    let team_results = sb.entries;
 
     let items = ivp_using(move |_, s| {
         let sorted_items = timer.signal()
@@ -184,10 +196,12 @@ fn scoreboard(sb: &Scoreboard) -> impl IVP {
                     i1.score(elapsed_minutes).cmp(&i2.score(elapsed_minutes))
                 });
                 team_results
+                    .into_iter().enumerate()
+                    .collect::<Vec<(usize, TeamResult)>>()
             }, s);
 
         sorted_items
-            .sig_vmap_options(move |se, s| {
+            .sig_vmap_options(move |(index, se), s| {
                 let se2 = se.clone();
                 let solved_time = timer.signal().map(move |time| {
                     let res = se2.score(*time / 60);
@@ -206,11 +220,11 @@ fn scoreboard(sb: &Scoreboard) -> impl IVP {
                         )
                         .push(
                             Text::from_signal(time)
-                                .text_color(LIGHT_GRAY)
+                                .text_color(DARK_GRAY)
                                 .text_size(10)
                         )
                         .intrinsic(58, 38)
-                        .border(WHITE, 1)
+                        .border(LIGHT_GRAY, 1)
                         .intrinsic(60, 40);
 
                 let timer_sig = timer.signal();
@@ -272,8 +286,12 @@ fn scoreboard(sb: &Scoreboard) -> impl IVP {
                     .push(
                         hstack()
                             .push(
+                                text((index + 1).to_string())
+                                    .intrinsic(50, 30)
+                            )
+                            .push(
                                 text(se.team.clone())
-                                    .intrinsic(150, 30)
+                                    .intrinsic(200, 30)
                                     .bold()
                             )
                             .push(score)
@@ -292,10 +310,13 @@ fn scoreboard(sb: &Scoreboard) -> impl IVP {
         .push(
             hstack()
                 .push(
+                    EmptyView.intrinsic(50, 30)
+                )
+                .push(
                     text("Team")
                         .bold()
                         .text_color(RED)
-                        .intrinsic(150, 30)
+                        .intrinsic(200, 30)
                 )
                 .push(
                     text("Score")
@@ -328,4 +349,6 @@ fn main_content(
                 .frame(F.unlimited_stretch())
         }
     )
+        .bg_color(WHITE)
+        .text_color(BLACK)
 }

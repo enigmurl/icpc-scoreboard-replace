@@ -27,7 +27,7 @@ impl TeamResult {
                     } = curr {
                     if *minutes <= elapsed_minutes {
                         status.0 += 1;
-                        status.1 += minutes + attempts * 20;
+                        status.1 += minutes + (attempts - 1) * 20;
                     }
                 }
 
