@@ -88,7 +88,7 @@ fn selector(
         )
         .push(
             Dropdown::new(contest_type.clone())
-                .option("NAC")
+                .option("KATTIS")
                 .option("CERC")
                 .intrinsic(100, 22)
         )
@@ -140,7 +140,7 @@ fn scoreboard(sb: &Scoreboard) -> impl IVP {
     thread::spawn(move || {
         let start = SystemTime::now();
         loop {
-            thread::sleep(Duration::from_secs(60));
+            thread::sleep(Duration::from_secs(1));
             let Some(binding) = binding.upgrade() else {
                 break;
             };
@@ -148,7 +148,7 @@ fn scoreboard(sb: &Scoreboard) -> impl IVP {
             let s = slock_owner();
             let duration = SystemTime::now()
                 .duration_since(start).unwrap();
-            binding.apply(Set((duration.as_secs() as usize).min(300 * 60)), s.marker());
+            binding.apply(Set(600 * (duration.as_secs() as usize).min(300 * 60)), s.marker());
         }
     });
 

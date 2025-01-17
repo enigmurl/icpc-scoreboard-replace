@@ -2,7 +2,7 @@ use quarve::state::{SetAction, Stateful};
 use quarve::util::marker::FalseMarker;
 
  // for a given team
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum ProblemStatus {
     Incorrect,
     Solved {
@@ -12,7 +12,7 @@ pub enum ProblemStatus {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct TeamResult {
     pub team: String,
     pub problems: Vec<ProblemStatus>
@@ -38,7 +38,7 @@ impl TeamResult {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Scoreboard {
     pub num_problems: usize,
     pub entries: Vec<TeamResult>
